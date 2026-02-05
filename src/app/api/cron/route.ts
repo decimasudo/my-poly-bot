@@ -1,17 +1,15 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-// Force dynamic agar selalu fresh saat Cron jalan
 export const dynamic = 'force-dynamic';
 
-// Fungsi Helper untuk delay (agar tidak kena Rate Limit AI)
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function GET() {
   try {
-    console.log("[CRON] Starting Daily Top 6 Scan...");
+    console.log("[CRON] Starting Top 6 Scan...");
     
-    // 1. Fetch Top 6 Active Events dari Polymarket
+    // 1. Fetch Top 6 Active Events
     const polyRes = await fetch(
       'https://gamma-api.polymarket.com/events?limit=6&active=true&closed=false&order=volume&descending=true'
     );
@@ -23,9 +21,7 @@ export async function GET() {
 
     const results = [];
 
-    // 2. Loop semua 6 Event
     for (const event of polyData) {
-      // Validasi Market Binary (Yes/No)
       const market = event.markets?.[0];
       if (!market) continue;
 
@@ -36,35 +32,32 @@ export async function GET() {
 
       if (!Array.isArray(outcomes) || outcomes.length !== 2) continue;
 
-      // Cek Duplikat di Database (Opsional: Kalau mau refresh total, bagian ini bisa disesuaikan)
-      // Disini kita cek agar tidak double entry di hari yang sama
-      const { data: existing } = await supabase
+      // 2. CEK DUPLIKAT (LOGIKA BARU)
+      // Cek apakah market ini sudah pernah di-post DALAM 12 JAM TERAKHIR?
+      // Jika iya -> SKIP (biar gak spam kalau kamu klik regenerate berkali-kali dalam 1 jam)
+      // Jika tidak -> INSERT (anggap sebagai update harian)
+      
+      const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+      
+      const { data: recentLog } = await supabase
         .from('alpha_logs')
         .select('id')
         .eq('market_id', event.id)
+        .gt('created_at', twelveHoursAgo) // Hanya cari yang dibuat > 12 jam lalu
         .single();
 
-      if (existing) {
-        console.log(`[SKIP] Market ${event.title} already exists.`);
+      if (recentLog) {
+        console.log(`[SKIP] Market ${event.title} already posted recently.`);
         continue;
       }
 
-      // Prepare Data
+      // --- LOGIC INSERT SAMA SEPERTI SEBELUMNYA ---
       const title = event.title;
-      let outcomePrices;
-      try {
-          outcomePrices = typeof marketDetails.outcomePrices === 'string' 
-              ? JSON.parse(marketDetails.outcomePrices) 
-              : marketDetails.outcomePrices;
-      } catch (e) { outcomePrices = [0.5, 0.5]; } // Fallback
-
-      // Gunakan harga market jika ada, atau default
       const currentPrice = market.outcomePrices ? JSON.parse(market.outcomePrices)[0] : 0.5;
       const probYes = Math.round(currentPrice * 100);
 
-      // 3. Generate Analysis dengan AI (Mistral)
       console.log(`[AI] Analyzing: ${title}`);
-      let chillAnalysis = "market looks volatile."; // Fallback
+      let chillAnalysis = "market looks volatile.";
 
       if (process.env.OPENROUTER_API_KEY) {
           try {
@@ -96,43 +89,26 @@ export async function GET() {
               if (aiRes.ok) {
                   const aiJson = await aiRes.json();
                   const content = aiJson.choices?.[0]?.message?.content;
-                  if (content) {
-                      chillAnalysis = content.replace(/"/g, '').trim().toLowerCase();
-                  }
+                  if (content) chillAnalysis = content.replace(/"/g, '').trim().toLowerCase();
               }
-          } catch (e) {
-              console.error("[AI Error]", e);
-          }
+          } catch (e) { console.error(e); }
       }
 
-      // 4. Save to Supabase
-      const { error: insertError } = await supabase
-          .from('alpha_logs')
-          .insert({
-              market_id: event.id,
-              market_title: title,
-              market_slug: event.slug,
-              chill_analysis: chillAnalysis,
-              odds: probYes
-          });
+      // Save to Supabase
+      const { error } = await supabase.from('alpha_logs').insert({
+          market_id: event.id,
+          market_title: title,
+          market_slug: event.slug,
+          chill_analysis: chillAnalysis,
+          odds: probYes
+      });
 
-      if (!insertError) {
-          results.push(title);
-          console.log(`[SUCCESS] Saved: ${title}`);
-      }
-      
-      // Delay 2 detik antar request agar tidak kena Rate Limit AI
-      await delay(2000);
+      if (!error) results.push(title);
+      await delay(2000); // Rate limit protection
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      processed: results.length,
-      markets: results 
-    });
-
+    return NextResponse.json({ success: true, processed: results.length });
   } catch (error: any) {
-    console.error("[FATAL ERROR]", error); 
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
