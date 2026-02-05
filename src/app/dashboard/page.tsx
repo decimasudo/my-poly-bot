@@ -3,21 +3,18 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import PixelBackground from '@/components/PixelBackground';
 import { 
   Terminal, 
-  Copy, 
   ExternalLink, 
   RefreshCw, 
-  Clock, 
-  Check, 
-  MessageSquare, 
-  ArrowLeft,
-  Activity,
-  Zap,
-  BarChart3
+  ArrowLeft, 
+  BarChart2,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
-// Types for our Feed Items
+// --- TYPES ---
 interface AlphaLog {
   id: number;
   market_title: string;
@@ -31,182 +28,206 @@ export default function DashboardPage() {
   const [logs, setLogs] = useState<AlphaLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
 
-  // Function to fetch the feed
+  // Fetch Feed
   const fetchFeed = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('alpha_logs')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(50); // Fetch last 50 items
+      .limit(100);
 
     if (data) setLogs(data);
-    if (error) console.error("Feed Error:", error);
     setLoading(false);
   };
 
-  // Function to manually trigger a scan (Calls your Cron API)
   const triggerScan = async () => {
     setScanning(true);
-    try {
-      await fetch('/api/cron'); // Calls the engine we built in Step 4
-      await fetchFeed(); // Refresh the list after scanning
+    try { 
+      await fetch('/api/cron'); 
+      await fetchFeed(); 
     } catch (e) {
-      console.error("Scan failed", e);
+      console.error(e);
     }
     setScanning(false);
   };
 
-  // Initial Load
-  useEffect(() => {
-    fetchFeed();
-  }, []);
+  useEffect(() => { fetchFeed(); }, []);
 
-  // Copy Function for Admin
-  const handleCopy = (log: AlphaLog) => {
-    // Reconstruct the "Chill Mate" Tweet format
-    const tweetText = `TRENDING: ${log.market_title}\n\nCONTEXT: ${log.chill_analysis}\n\nODDS: ${log.odds}%\n\n👇 What's the play? Vote below!`;
-    
-    navigator.clipboard.writeText(tweetText);
-    setCopiedId(log.id);
-    setTimeout(() => setCopiedId(null), 2000);
+  // --- PAGINATION LOGIC ---
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentLogs = logs.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(logs.length / itemsPerPage);
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
-    <div className="min-h-screen bg-white text-black font-mono selection:bg-blue-200">
-      
+    <div className="min-h-screen text-black font-mono selection:bg-blue-200 relative overflow-x-hidden">
+      <PixelBackground /> 
+
       {/* --- HEADER --- */}
-      <header className="sticky top-0 z-50 bg-white border-b-4 border-black px-4 py-4 md:px-8 flex items-center justify-between">
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b-4 border-black px-4 py-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <Link href="/">
-             <button className="p-2 border-2 border-transparent hover:border-black hover:shadow-hard-sm transition-none">
+             <button className="w-10 h-10 bg-gray-100 flex items-center justify-center border-2 border-black shadow-hard-sm hover:translate-y-1 hover:shadow-none transition-none">
                 <ArrowLeft size={20} />
              </button>
           </Link>
-          <div className="flex items-center gap-2">
-            <Terminal size={20} />
-            <h1 className="text-lg md:text-xl font-bold uppercase tracking-tighter">
-              Alpha<span className="text-blue-600">Console</span>
-            </h1>
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 bg-blue-600 border-2 border-black flex items-center justify-center text-white animate-pulse">
+                <Terminal size={20} />
+             </div>
+             <h1 className="text-xl font-bold uppercase tracking-tighter hidden md:block">
+               Poly<span className="text-blue-600">Feed</span>
+             </h1>
           </div>
         </div>
         
-        <div className="flex gap-4">
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex text-[10px] font-bold bg-gray-100 border-2 border-black px-3 py-2 uppercase gap-2">
+             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"/>
+             <span>System Online</span>
+          </div>
           <button 
             onClick={triggerScan} 
             disabled={scanning}
-            className="flex items-center gap-2 px-4 py-2 bg-black text-white border-2 border-black shadow-hard-sm hover:translate-y-1 hover:shadow-none disabled:opacity-50 disabled:translate-y-0 disabled:shadow-hard-sm"
+            className="px-4 py-2 bg-black text-white border-2 border-black shadow-hard-sm hover:translate-y-1 hover:shadow-none disabled:opacity-50 font-bold text-xs uppercase flex gap-2 items-center transition-all"
           >
             <RefreshCw size={14} className={scanning ? "animate-spin" : ""} />
-            <span className="text-[10px] font-bold uppercase hidden md:inline">
-               {scanning ? "SCANNING..." : "FORCE SCAN"}
-            </span>
+            {scanning ? "SCANNING..." : "REFRESH"}
           </button>
         </div>
       </header>
 
-      {/* --- MAIN CONTENT --- */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      {/* --- MAIN CONTENT (HORIZONTAL GRID) --- */}
+      <main className="max-w-7xl mx-auto px-4 py-8">
         
-        {/* METRICS ROW (The "Dashboard" Vibe) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-           <StatCard label="TOTAL SIGNALS" value={logs.length.toString()} icon={<Activity size={16}/>} />
-           <StatCard label="WIN RATE (EST)" value="68%" icon={<BarChart3 size={16}/>} />
-           <StatCard label="MODEL" value="GEMINI-2.0" icon={<Zap size={16}/>} />
-           <StatCard label="STATUS" value="ONLINE" icon={<Check size={16}/>} active />
-        </div>
+        {/* Loading State */}
+        {loading && logs.length === 0 && (
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1,2,3].map((i) => (
+                <div key={i} className="h-64 bg-white border-4 border-black shadow-hard animate-pulse flex items-center justify-center">
+                    <span className="text-xs font-bold">`{'>'}` LOADING DATA...</span>
+                </div>
+              ))}
+           </div>
+        )}
 
-        {/* FEED LIST */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between border-b-4 border-black pb-2 mb-6">
-             <h2 className="text-sm font-bold uppercase flex items-center gap-2">
-                <MessageSquare size={16} /> LIVE FEED
-             </h2>
-             <span className="text-[10px] font-bold text-gray-400">AUTO-REFRESH: 1H</span>
-          </div>
-
-          {loading && logs.length === 0 && (
-             <div className="text-center py-20 animate-pulse text-xs font-bold">
-                `{'>'}` FETCHING DATA FROM SUPABASE...
-             </div>
-          )}
-
-          {logs.map((log) => (
-            <article key={log.id} className="group relative bg-white border-4 border-black shadow-hard transition-transform hover:-translate-y-1 hover:shadow-[6px_6px_0_0_#000]">
+        {/* FEED GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {currentLogs.map((log) => (
+            <article key={log.id} className="flex flex-col bg-white border-4 border-black shadow-hard hover:-translate-y-2 transition-transform duration-200 h-full">
               
-              {/* Card Header */}
-              <div className="bg-gray-100 border-b-2 border-black p-3 flex justify-between items-start gap-4">
-                 <h3 className="font-bold text-[10px] md:text-xs leading-relaxed uppercase">
-                    {log.market_title}
-                 </h3>
-                 <span className={`shrink-0 text-white text-[10px] px-2 py-1 font-bold border-2 border-black shadow-hard-sm ${log.odds > 50 ? 'bg-green-600' : 'bg-red-500'}`}>
-                    {log.odds}%
-                 </span>
-              </div>
-
-              {/* Card Body */}
-              <div className="p-4">
-                 <div className="flex gap-3 mb-4">
-                    <span className="text-blue-600 font-bold">`{'>'}`</span>
-                    <p className="text-xs leading-loose text-gray-800 lowercase font-bold">
-                       {log.chill_analysis}
-                    </p>
+              {/* CARD HEADER: Market Question */}
+              <div className="p-5 border-b-2 border-black bg-blue-50 flex-grow">
+                 <div className="flex justify-between items-start gap-2 mb-3">
+                    <span className="text-[10px] font-bold text-blue-600 uppercase border border-blue-200 bg-white px-2 py-1">
+                       Alpha Signal #{log.id}
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase">
+                       {new Date(log.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                    </span>
                  </div>
                  
-                 {/* Footer Actions */}
-                 <div className="flex items-center justify-between mt-4 pt-4 border-t-2 border-gray-100">
-                    <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase">
-                       <Clock size={12} />
-                       {new Date(log.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                 <a href={`https://polymarket.com/event/${log.market_slug}`} target="_blank" className="group">
+                    <h3 className="font-bold text-lg leading-tight uppercase group-hover:text-blue-600 transition-colors">
+                       {log.market_title}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-2 text-xs font-bold text-gray-500 group-hover:underline">
+                       <BarChart2 size={12} />
+                       View Market Source
                     </div>
+                 </a>
+              </div>
 
-                    <div className="flex gap-2">
-                       {/* COPY BUTTON */}
-                       <button 
-                          onClick={() => handleCopy(log)}
-                          className={`flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase border-2 border-black transition-all ${
-                             copiedId === log.id 
-                             ? "bg-green-400 text-black shadow-none translate-y-1" 
-                             : "bg-white hover:bg-gray-50 shadow-hard-sm hover:translate-y-1 hover:shadow-none"
-                          }`}
-                       >
-                          {copiedId === log.id ? <Check size={12} /> : <Copy size={12} />}
-                          {copiedId === log.id ? "COPIED" : "COPY"}
-                       </button>
+              {/* CARD BODY: Odds & Analysis */}
+              <div className="p-5 flex flex-col gap-4">
+                 
+                 {/* ODDS BAR (SPLIT YES/NO) */}
+                 <div className="w-full h-7 flex border-2 border-black text-[10px] font-bold uppercase leading-none shadow-[2px_2px_0_0_#000]">
+                     {/* YES Section */}
+                     <div 
+                        className="bg-blue-600 text-white h-full flex items-center pl-2 overflow-hidden whitespace-nowrap transition-all duration-500"
+                        style={{ width: `${log.odds}%`, borderRight: log.odds < 100 ? '2px solid black' : 'none' }}
+                     >
+                        {log.odds > 15 && `YES ${log.odds}%`}
+                     </div>
+                     
+                     {/* NO Section */}
+                     <div className="bg-red-500 text-white flex-1 h-full flex items-center justify-end pr-2 overflow-hidden whitespace-nowrap">
+                        {100 - log.odds > 15 && `NO ${100 - log.odds}%`}
+                     </div>
+                 </div>
 
-                       {/* VOTE BUTTON */}
-                       <a 
-                          href={`https://polymarket.com/event/${log.market_slug}`}
-                          target="_blank"
-                          className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-[10px] font-bold uppercase border-2 border-black shadow-hard-sm hover:translate-y-1 hover:shadow-none"
-                       >
-                          <ExternalLink size={12} /> VOTE
-                       </a>
-                    </div>
+                 {/* Chill Analysis */}
+                 <div className="bg-gray-100 p-3 border-2 border-black text-xs leading-relaxed font-bold text-gray-800 lowercase">
+                    <span className="text-blue-600 mr-2">`{'>'}`</span>
+                    {log.chill_analysis}
                  </div>
               </div>
+
+              {/* CARD FOOTER: Actions */}
+              <div className="p-4 border-t-2 border-black bg-gray-50 mt-auto">
+                 <a 
+                    href="https://x.com/polyxvote" 
+                    target="_blank"
+                    className="flex items-center justify-center gap-2 w-full py-3 bg-black text-white text-xs font-bold uppercase border-2 border-black shadow-hard-sm hover:bg-blue-600 hover:shadow-none hover:translate-y-1 transition-all"
+                 >
+                    <ExternalLink size={14} /> Vote on X
+                 </a>
+              </div>
+
             </article>
           ))}
         </div>
 
+        {/* --- PAGINATION CONTROLS --- */}
+        {totalPages > 1 && (
+          <div className="mt-12 flex justify-center items-center gap-4">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="p-3 bg-white border-2 border-black shadow-hard-sm hover:translate-y-1 hover:shadow-none disabled:opacity-50 disabled:translate-y-0 disabled:shadow-hard-sm transition-all"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <div className="flex items-center gap-2">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
+                <button
+                  key={number}
+                  onClick={() => handlePageChange(number)}
+                  className={`w-10 h-10 border-2 border-black font-bold text-xs transition-all ${
+                    currentPage === number
+                      ? "bg-blue-600 text-white shadow-none translate-y-1"
+                      : "bg-white text-black shadow-hard-sm hover:translate-y-1 hover:shadow-none"
+                  }`}
+                >
+                  {number}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="p-3 bg-white border-2 border-black shadow-hard-sm hover:translate-y-1 hover:shadow-none disabled:opacity-50 disabled:translate-y-0 disabled:shadow-hard-sm transition-all"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
+
       </main>
     </div>
   );
-}
-
-// Sub-component for Stats
-function StatCard({ label, value, icon, active }: { label: string, value: string, icon: any, active?: boolean }) {
-   return (
-      <div className="bg-white p-4 border-2 border-black shadow-hard flex flex-col justify-between h-24">
-         <div className="flex items-center justify-between text-gray-400">
-            <span className="text-[10px] font-bold uppercase">{label}</span>
-            <span className="text-black">{icon}</span>
-         </div>
-         <span className={`text-lg md:text-xl font-black tracking-tighter ${active ? 'text-green-600 animate-pulse' : 'text-black'}`}>
-            {value}
-         </span>
-      </div>
-   );
 }

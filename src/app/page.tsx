@@ -1,11 +1,10 @@
 "use client";
 
 import Link from 'next/link';
+import PixelBackground from '@/components/PixelBackground';
 import { 
   Terminal, 
   TrendingUp, 
-  Shield, 
-  Zap, 
   ArrowRight, 
   MessageSquare, 
   Globe 
@@ -13,10 +12,13 @@ import {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white text-black font-mono selection:bg-blue-200 flex flex-col">
+    <div className="min-h-screen text-black font-mono selection:bg-blue-200 flex flex-col relative overflow-hidden">
       
+      {/* 1. Background Animasi */}
+      <PixelBackground />
+
       {/* --- NAVIGATION --- */}
-      <nav className="sticky top-0 z-50 bg-white border-b-4 border-black px-6 h-20 flex items-center justify-between">
+      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b-4 border-black px-6 h-20 flex items-center justify-between">
         <div className="flex items-center gap-4">
           {/* Logo Box */}
           <div className="w-10 h-10 bg-blue-600 border-2 border-black shadow-hard-sm flex items-center justify-center text-white animate-bounce">
@@ -39,7 +41,8 @@ export default function LandingPage() {
       </nav>
 
       {/* --- HERO SECTION --- */}
-      <section className="relative pt-24 pb-32 overflow-hidden border-b-4 border-black bg-[linear-gradient(45deg,#f3f4f6_25%,transparent_25%,transparent_75%,#f3f4f6_75%,#f3f4f6),linear-gradient(45deg,#f3f4f6_25%,transparent_25%,transparent_75%,#f3f4f6_75%,#f3f4f6)] bg-[length:20px_20px] bg-[position:0_0,10px_10px]">
+      {/* Note: Menghapus gradient background lama agar PixelBackground terlihat */}
+      <section className="relative pt-24 pb-32 overflow-hidden border-b-4 border-black">
         <div className="max-w-7xl mx-auto px-6 text-center relative z-10">
           
           <div className="inline-block bg-blue-100 border-2 border-black px-4 py-2 mb-8 shadow-hard-sm transform -rotate-2">
@@ -55,7 +58,7 @@ export default function LandingPage() {
             </span>
           </h1>
           
-          <p className="text-xs md:text-sm text-gray-600 mb-12 max-w-2xl mx-auto leading-loose bg-white p-4 border-2 border-black shadow-hard-sm">
+          <p className="text-xs md:text-sm text-gray-800 mb-12 max-w-2xl mx-auto leading-loose bg-white/80 p-4 border-2 border-black shadow-hard-sm backdrop-blur-sm">
             `{'>'}` SCAN POLYMARKET ODDS.<br/>
             `{'>'}` GENERATE "CHILL" ALPHA WITH AI.<br/>
             `{'>'}` COPY-PASTE TO X & FARM ENGAGEMENT.
@@ -76,7 +79,7 @@ export default function LandingPage() {
       </section>
 
       {/* --- FEATURES GRID --- */}
-      <section id="features" className="py-24 bg-white border-b-4 border-black">
+      <section id="features" className="py-24 bg-white/95 border-b-4 border-black backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-xl md:text-2xl font-bold text-black uppercase mb-4 decoration-4 underline underline-offset-8 decoration-blue-600">
@@ -96,7 +99,7 @@ export default function LandingPage() {
             <FeatureCard 
               icon={<MessageSquare className="w-8 h-8 text-blue-600" />}
               title="Chill AI Analysis"
-              desc="Our Gemimi-2.0 model reads the charts and gives you a 'Chill Mate' take. No robot speak. Just alpha."
+              desc="Our Mistral-7B model reads the charts and gives you a 'Chill Mate' take. No robot speak. Just alpha."
             />
             <FeatureCard 
               icon={<Globe className="w-8 h-8 text-green-600" />}
@@ -112,7 +115,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6">
            <div className="flex flex-col md:flex-row gap-12 items-center justify-center">
               <StatBox label="MARKETS SCANNED" value="24/7" />
-              <StatBox label="AI MODEL" value="GEMINI 2.0" />
+              <StatBox label="AI MODEL" value="Claude" />
               <StatBox label="COST TO USE" value="$0.00" />
            </div>
         </div>
