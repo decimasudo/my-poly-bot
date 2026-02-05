@@ -124,6 +124,23 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* --- CONTRACT ADDRESS SECTION --- */}
+      <section className="py-24 bg-white border-b-4 border-black">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <h2 className="text-xl md:text-2xl font-bold text-black uppercase mb-8 decoration-4 underline underline-offset-8 decoration-blue-600">
+            Contract Address
+          </h2>
+          <div className="bg-gray-100 p-6 border-4 border-black shadow-hard inline-block">
+            <p className="text-sm font-mono text-gray-800 break-all">
+              BYgQaLbTWm8MitArZwpEJLxFL5S2gnKroesn8WRbpump
+            </p>
+          </div>
+          <p className="text-xs text-gray-500 mt-4 uppercase">
+            Use this address for interactions on the blockchain.
+          </p>
+        </div>
+      </section>
+
       {/* --- FOOTER --- */}
       <footer className="py-12 bg-black text-white mt-auto">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between text-[10px] font-bold uppercase">
