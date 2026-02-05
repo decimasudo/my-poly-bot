@@ -7,7 +7,8 @@ import {
   TrendingUp, 
   ArrowRight, 
   MessageSquare, 
-  Globe 
+  Globe,
+  Github 
 } from 'lucide-react';
 
 export default function LandingPage() {
@@ -30,6 +31,10 @@ export default function LandingPage() {
         <div className="flex items-center gap-6 text-xs font-bold uppercase">
           <a href="#features" className="hover:underline decoration-2 underline-offset-4 hidden sm:block">Features</a>
           <a href="/how-it-works" className="hover:underline decoration-2 underline-offset-4 hidden sm:block">Protocol</a>
+          <a href="https://github.com/decimasudo/polyxvote" target="_blank" className="hover:underline decoration-2 underline-offset-4 flex items-center gap-1">
+            <Github size={16} />
+            <span className="hidden sm:inline">GitHub</span>
+          </a>
           <Link href="/dashboard">
             <button className="px-6 py-3 bg-black text-white text-[10px] md:text-xs font-bold uppercase shadow-hard hover:translate-y-1 hover:shadow-none transition-none border-2 border-transparent hover:border-black">
               Launch Terminal
